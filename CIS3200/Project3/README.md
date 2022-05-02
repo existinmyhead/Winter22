@@ -1,1 +1,1 @@
-
+I used PySpark on Jupyter Notebook. My logic was to start with the previous code that split up the words of the text, and remove all the special characters. My next step was to convert each word to lowercase and truncate each word so it was only left with the first letter of each word. I originally planned on splitting those steps up, but I was able to combine them and map all in the same chunk of code. After inspecting that output, I noticed it hadn't removed all of the number characters, so I filtered them out in my reduce step.

@@ -1,0 +1,385 @@
+---
+title: "STAT-430/530-001 Project"
+author: "Marissa Fluharty and Nitya Shanker"
+date: "4/18/2022"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE, echo=FALSE,message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyr)
+library(tidyverse)
+library(readr)
+library(Hmisc)
+library(vtable)
+library(knitr)
+library(kableExtra)
+library(corrplot)
+library(ggcorrplot)
+library(car)
+canadian_travel_survey <- read_csv("C:/Users/17346/Downloads/canadian_travel_survey.csv")
+View(canadian_travel_survey)
+```
+
+
+## 1.) Introduction
+
+#
+“In the first quarter of 2021, Canadians took over 27.1 million trips both within Canada and abroad. With ongoing travel restrictions and borders closed to non-essential travel, the volume of trips was quantitatively and qualitatively different when compared with the same quarter in 2019, before the pandemic.”(Statistics Canada)
+
+Since the pandemic began, in 2020, international and domestic travel has drastically decreased. But, as the pandemic has been accepted to become an endemic, travel increased exponentially. Due to this, the demand for travel agencies has also surged. In order to maximize costs after such a hard hit, one must know the most cost efficient details about the customer. 
+
+We have been asked to interpret data given by such a travel company impacted by the pandemic. This travel company works with Canadian travelers who have traveled domestically, and potentially internationally. In order to help them maximize profit, the data set describes details of previous clients in order to help determine what drove the cost of their trip up, and how to predict the high spending clients.
+
+There has been similar work done in the past with this type of research, namely VistorView. This is a new marketing tool to help travel agencies determine their ideal traveler and how to market towards them. The goal of this project is similar in that an ideal traveler is to be determined, but it differs in that the presentable is what specific things maximize profit. VisitorView accomplishes this as well but in a commercialized tool for employers.
+
+The Canadian government also runs their own quarterly analysis of travel within Canada, however this focuses more on the logistical whereabouts of citizens. Our goal with the given data is to determine what aspects of a customer we can learn at consultation to know how much profit we can make from them. Due to increased use of travel agencies, not all clients can be helped. Therefore, specific client details can help determine whether or not the client will allow maximum profit. This is to ensure no loss is made on a potentially big budgeted client. 
+
+However, many of the aspects of a client’s trip may not be known at the consultation. Many clients will not want to fill out a survey with an extensive amount of questions, and some of the questions may not be relevant or significant to the cost of the trip. Therefore, we must find what aspects about the client will maximize the profit, while minimizing the amount of questions given at consultations.
+
+The data set contains 11 variables, both categorical and numerical. Most of the variables are categorical, with the few numerical variables being Distance, Duration, Others, and Cost. A list of the variables and their meaning is shown in the table below:
+ 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+describe_variables <- data.frame()
+describe_variables[1,1] <- "Q" 
+describe_variables[1,2] <- "Calendar quarter of the trip."
+describe_variables[1,3] <- "Q1, Q2, Q3, Q4"
+describe_variables[2,] <- c("ProvO", "Trip province of origin.", "Province names.")
+describe_variables[3,] <- c("Distance", "Trip's distance traveled (km).", "Numerical.")
+describe_variables[4,] <- c("Duration", "Number of nights spent on trip.", "Numerical.")
+describe_variables[5,] <- c("Reason", "Main reason for the trip.", "Vacation or visit.")
+describe_variables[6,] <- c("Age", "Age of every respondant.", "Six age bins.")
+describe_variables[7,] <- c("Gender", "Gender of every respondant.", "Male or female.")
+describe_variables[8,] <- c("HHI", "Household income (CAN$).", "Four income bins.")
+describe_variables[9,] <- c("Others", "Number of others that accompanied the respondant.", "Numerical.")
+describe_variables[10,] <- c("Mode", "Main mode of transportation.", "Car or plane.")
+describe_variables[11,] <- c("Cost", "The total cost of the trip (CAN$).", "Numerical.")
+colnames(describe_variables) <- c("Variable", "Description", "Values")
+kable(describe_variables[1:10,], caption="Variables in the Canadian Travel Survey", row.names = FALSE) %>% kable_material(c("striped","hover"))
+kable(tail(describe_variables, n=1), row.names = FALSE) %>% kable_material(c("striped","hover"))
+```
+
+#
+The data set is slightly skewed with around 50% of the data being from households that make over one hundred thousand dollars annually(AT-7). Though the data is skewed, it could potentially be in our favor as we are looking for clients who will spend the most money. In order for clients to spend the money, they have to have it, which these clients would. However, one part of the data that is surprisingly skewed is that 89% of the respondents used cars as their mode of transportation(AT-1). This skew is not helpful because we would like to know more of the statistics of clients who chose planes for their transportation as that would drive their spending up. However, this could be indicative of mode of transportation being non influential in the cost of the respondents' trips going up. 
+
+In order to see whether or not this is true, a statistical model would need to be constructed. The model is the best tool we have to allow us to understand what aspects of the survey most affected the cost of a respondents trip. This is our deliverable, but in order to provide evidence and thoroughly explain the relationship we have provided descriptive statistics and visualizations. 
+
+
+## 2.) Descriptive Statistics
+
+Descriptive statistics are used to summarize the basic features and characteristics of a data set. Because this data set contains numerical and categorical variables, multiple methods can be used to summarize the data.
+
+For the numerical variables (distance, duration, others, and cost), statistics are shown in the table below:
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+numeric <- canadian_travel_survey %>% select_if(is.numeric)
+
+kable(summary(numeric),caption="Summary Statistics", row.names = FALSE) %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+```
+
+#
+From this table, it’s clear to see that distance and cost are the categories that have the highest variability, with their respective standard deviation values at 647.765 and 1016.349. This wide spread of data is reflected in the minimum and maximum values – (6, 4996) for distance and (0, 19200) for cost. From this, one can glean that people are taking trips of all different distances and at all different costs. 
+
+In addition to the summary statistics table, individual histograms show the spread of data for each variable. Graphs AG-1 – AG-4 show visualizations for the numerical data. 
+
+Graph AG-1 (Distance) shows that a majority of people took trips where the distance was between 0 and 500 km. Similarly, Graph AG-2 (Duration) shows that over 4,000 of the 4,884 survey respondents took a trip that lasted between 0 and 5 days. Graph AG-4 (Cost) highlights that a very high percentage of people spent between 0 and $1000 on their trip, even though the range for cost goes all the way to $20,000. This could be indicative of an outlier in the dataset. As shown in each histogram, the data for all numerical variables is positively skewed. This shows that on average, a high percentage of the data for each variable is clustered around the left tail of the distribution. From these visualizations, we gain a better understanding of the dataset we’re working with.
+
+For categorical variables, a summary statistics table containing minimum, maximum, mean, and standard deviation values is not possible. Instead, bar graphs are useful to visualize the spread of data for categorical variables. Graphs AG-5 – AG-11 take the frequencies from each respective proportion table (Tables AT-1 – AT-7) and plot them on graphs.
+
+Graph AG-5 (Quarter) shows that the spread of data categorized into the calendar quarter of the trip is fairly even. Q1 makes up a slightly higher proportion of the data than Q2, Q3, or Q4, but only by a little. The spread of data in Graph AG-7 (Reason) is very evenly split at approximately 50% each between vacation and visit. Graph AG-10 (Household Income) is positively skewed, with 50% of the data falling in the 100K and up bracket. With approximately half of the data coming from survey respondents that are wealthier, this is bound to drive up the cost of their respective trips. Graph AG-11 (Mode of Transportation) is another graph where the proportion is unevenly distributed, with over 80% of the mode of transportation being attributed to cars, and under 20% to planes. A large percentage of the data being restricted to one category may have a higher chance of significantly affecting the response variable of Cost.
+
+Proportion tables are a more detailed way of understanding categorical data and use discrete proportions to describe the spread of the data. Tables AT-1 – AT-7 indicate the percentage of data that each category makes up. These tables confirm the trends seen in the bar graphs (AG-5 – AG-11) discussed above. 
+
+The previous graphs and tables all show a summary of the data for each individual variable. This is important as it gives us an idea of the spread of data for each variable. However, we know that we’ll be working with Cost as our response variable. Having visualizations of the predictor (independent) variables plotted against the response (dependent) variable will further aid in our understanding of . The box plots in Graphs AG-12 – AG-18 depict these visualizations.
+
+All box plots used the square root of Cost as the response variable. This transformation was used to create a better visualization and understanding of how each categorical variable may interact with Cost. Graph AG-12 (Quarter) shows that each quarter is evenly spread at about the same cost, but contains many outliers. This means that there seems to be no significant difference in cost when taking a trip during different quarters of the year. Graph AG-14 (Reason) is another plot that shows vacation is positioned slightly above visit, meaning that trips considered as vacations cost more than trips considered as visits. Graph AG-18 (Mode of Transportation) shows the clearest distinction between car and plane, with trips traveled by plane costing more than trips traveled by car. 
+
+The tables and graphs discussed above gave us a summary of the data we’re working with. Some things that we learned from the descriptive statistics include the high variability of numerical variables, positive skewness of categorical variables, and the possible outliers highlighted in the visualizations. Taking these factors into account, we can more adequately determine which variables will have a significant effect on the response variable, Cost, and by extension serve as parameters for our linear model.
+
+## 3.) Analysis
+
+#
+To start building a model for the data set, we constructed a correlation plot to see which variables are most correlated with our response variable, Cost. A simplified version of this just with the numerical variables can be seen below, but the full correlation plot can be found in the appendix at AG-19 and AG-20.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+survey_num <- canadian_travel_survey %>% select_if(is.numeric) # remove categorical data (only numerical left)
+cor <- cor(survey_num) # shows numerical correlation
+corrplot(cor, type = "full")
+```
+ 
+Based on this plot, we can see that distance and cost are the most highly correlated. However, other variables don't seem to be as correlated to Cost. This doesn't seem to be accurate though, based on the skew of the data we mentioned previously, as well as the descriptive statistics. It is likely that there are multiple variables needed in the linear model.  
+
+This is what led us to constructing ten linear models with Cost and the ten independent variables. This would allow us to see what variables to potentially include in our model, but to see if some variable was falsely inflating the R squared value in the model. This would be cause by high correlation with other variables in the model, but not actually with cost. These tables can be seen in the appendix as AT-12 to AT-17. 
+
+From the tables we can see that Q, ProvO, Gender, and Age have large P values. Setting up a hypothesis test where the null hypothesis is that all of their betas are zero, and the alternate as at least one is not. We can see that the null hypothesis holds true using these p values for any reasonable alpha, around 0.01 to 0.1. Due to this, with our further model testing we did not include any of these variables.
+
+Next we performed a backwards step-wise regression, which showed us with all variables included, an R squared value of 0.5. This test the same results as the last section for potential variables to include, so our first draft of our model was complete:
+
+Cost = 422.050 + 0.615 * Distance + 72.018 * Duration + 31.139 * Others - 403.443 * Reason + 51.624 * Mode - 106.99 * HHI(50K-60K) - 107.238 * HHI(70K to 9K) - 217.049 * HHI(Under 50K)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+canadian_travel_survey$Cost <- as.numeric(impute(canadian_travel_survey$Cost, mean))
+new_model <- lm(Cost~Distance + Duration + Others + Reason + Mode + HHI, data = canadian_travel_survey)
+new_model_sum <- summary(new_model)
+kable(coef(new_model_sum), caption = "First Linear Model") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+```
+
+#
+This model yielded an R squared value of 0.399, but we knew that we could do better as the backwards step-wise regression gave a higher R squared. The next step to improve the linearity of the model is to transform some of the variables. Testing with logarithm, square roots, and inverses, we found the best model to be the square root of all numerical values:   
+
+sqrt(Cost) = 7.808 + 0.51 * sqrt(Distance) + 5.688 * sqrt(Duration) + 1.759 * sqrt(Others) - 7.465 * Reason + 3.743 * Mode - 2.0558 * HHI(50K-69K) - 1.478 * HHI(70K-99K) - 4.153 * HHI(Under 50K)
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, include=TRUE}
+sqrt_model <- lm(sqrt(Cost)~sqrt(Distance) + sqrt(Duration) + sqrt(Others) + Reason + Mode + HHI, data = canadian_travel_survey)
+sqrt_model_sum <- summary(sqrt_model)
+kable(coef(sqrt_model_sum), caption = "Second Linear Model") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+```
+
+#
+With this model the R squared as increased to 0.5 from the previous model. This is the best R squared we were able to find with the variables we chose prior. Removing Mode, Others, and/or HHI decreases the R squared down to roughly 0.48 which is still an acceptable model for the data set. 
+#
+However, due to being asked to minimize the number of variables we deem influential enough to include, we looked at trying to remove variables from the model. Since, HHI and Mode only decreased the R squared slightly these were the first we considered. We decided to remove mode as that is less likely to be known then any other factor of the trip as some people don't decide until a budget is given. We also decided to remove Others as that is sometimes not known until later in the planning process as well HHI is easier to include on the questionnaire, as annual income is more known. This gave us our final model with an R squared value of 0.49:   
+
+sqrt(Cost) = 8.0368 + 0.591 * sqrt(Distance) + 5.624 * sqrt(Duration) - 2.015 * HHI(50K-69K) - 1.573 * HHI(70K-99K) - 4.061 * HHI(Under 50K) - 8.11 * Reason
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include=TRUE}
+final_model <- lm(sqrt(Cost)~sqrt(Distance) + sqrt(Duration) + HHI + Reason, data = canadian_travel_survey)
+final_model_sum <- summary(final_model)
+kable(coef(final_model_sum), caption = "Final Linear Model") %>% kable_material(c("striped", "hover")) %>% kable_styling(latex_options = 'hold_position')
+```
+#
+Based on the ANOVA table below for our final model we can perform an F statistic test. The null hypothesis being all of the beta values being 0, and alternate hypothesis being any of the betas not being zero. Using the table we can see that the p value for the F statistic for every beta is 0. This means using any alpha(i.e. 0.05 or 0.1) will show that the null hypothesis is rejected. This proves that our betas are not zero and our final model variables have a significant enough effect on cost to remain in the model.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+kable(anova(final_model), caption = "ANOVA Table for Final Linear Model") %>% kable_material(c("striped", "hover")) %>% kable_styling(latex_options = 'hold_position')
+```
+#
+After playing with many combinations of variables and transformations in the model we found that the QQ norm plot showed relatively good linearity with our model. However, with the plot of the residuals vs. fitted values we found that it wasn't very randomly distributed. It was slightly random but there is a slight pattern of a fan shape around the line y=0. The QQ plot and the residual plot can be found in the appendix at AG-21 and Ag-22.
+
+The main surprising independent variable in the model was Reason, as we didn't expect this to have a huge affect on Cost. However, removing the Reason variable from the model, drops the R squared dramatically. This is depicted in the following graph which is also located in the Appendix at AG-13.   
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', out.width= '70%'}
+canadian_travel_survey$Reason[canadian_travel_survey$Reason == "vacation"] <- "Vacation"
+canadian_travel_survey$Reason[canadian_travel_survey$Reason == "visit"] <- "Visit"
+ggplot(canadian_travel_survey, aes(Reason, sqrt(Cost))) + geom_boxplot(aes(fill=Reason)) + xlab("Reason for Trip") + ylab(expression(Cost~of~Trip~sqrt(CANdollar))) + ggtitle("How Does Travel Reason Affect the Cost of the Trip")
+```
+
+#
+As depicted in the graph, having Vacation for the reason of the trip increases the price of the trip by roughly 100 dollars from the mean. Our theory was that the type of trip could make the distance further away which we depicted with the following graph:
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+ggplot(canadian_travel_survey, aes(Reason, sqrt(Distance))) + geom_boxplot(aes(fill=Reason)) + xlab("Reason for Trip") + ylab(expression(Distance~sqrt(km))) + ggtitle("Does a Different Reason for a Trip Increase the Distance")
+```
+#
+Based on the graph it seems that the Distance is not increased or decreased based off the reason for the trip by much. This must mean that Reason is affecting cost on its own and not another variable within the linear model, So, the R squared value is not being inflated by Reason being included.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', out.width='70%'}
+final_model <- lm(sqrt(Cost)~sqrt(Distance) + sqrt(Duration) + HHI + Reason + sqrt(Others) + Mode, data = canadian_travel_survey)
+avPlots(final_model)
+```
+#
+The plot above depicts the model before removing some of the variables as an added variable plot. This plot graphs each dependent variable against the response variable while all other variables are held constant. As we can see in this plot Others, HHI, and Mode have the flattest slopes. This provides evidence to back up our previous claim of removing none to all of them from the model. Though they could potentially have an affect on the cost, it would most likely be minute.
+
+Our linear model is the best we can do with the given data, that potentially has some problems that we will discuss in the next section. It accurately reflects our research question as an attempt to minimize survey questions while asking those that maximize profits.
+
+## 4.) Discussion
+
+#
+From our descriptive statistical analysis we found that the data was heavily skewed with much of the data concentrated in specific categories or number ranges. Going into our analysis, we found it difficult to fit a model that could potentially estimate what variables most affected the cost, while also minimizing the amount of variables we included. 
+
+The main concern we have found with our model and visualizations is how skewed the data is. For example, our final R squared value is only 0.5, and the tails on our QQ plot were slightly curved. Especially in our residual model, the values were not randomly distributed. No matter what transformations or combinations of variables we did to the model we could not get these problems to go away much. Due to this, we are unsure how accurate the model could be. It is more accurate than not using a model at all, but it most likely can not predict the cost of a trip very accurately. 
+
+We are concerned that this could potentially be due to how skewed the data is. Many of the categorical variables are heavily concentrated in one category, while many of the numerical variables are heavily concentrated in a small numerical range. Because of this, the model is relatively difficult to fit.
+
+However, we believe we have the survey questions that most influence cost. Which are: Distance, Duration, HHI, and Reason. There is one thing to note though. Depending on how many questions that are willing to be put on the survey, there could potentially be a better model. Including the square root of Others as well as Mode increases the R squared value slightly. However, they were not included in our final model as we decided that they were too hard for a client to know with certainty before a potential trip. This could definitely be changed based on the number of questions to be included in the survey, but for our purposes we attempted to find the best model that minimized the amount of variables.
+
+Due to the skew in the data and the only partially successful model, we are wondering if perhaps the data gathered was biased. For a majority of the respondents, their yearly annual income was over 100 thousand dollars which seemed that it would be helpful towards the model. This is because we are looking for clients who will spend the most money and stereotypical respondents in that category should. However, the data does not reflect this.
+
+Overall, we believe our model accurately represents the data given. If the data was truly accurate and unbiased we believe that this is the best model to predict. Due to this we believe that the travel agency should ask potential clients an estimate of Distance, Duration, and give a reason why they are going as well as their yearly annual income. Using our model and that information, they can decide if that potential client will make them enough profit to move forward with their sale.
+
+## 5.) References
+#
+Introduction Quote:
+https://www150.statcan.gc.ca/n1/daily-quotidien/210827/dq210827c-eng.htm 
+
+VisitorView:
+https://www.newswire.ca/news-releases/environics-analytics-launches-visitorview-an-innovative-new-product-for-the-travel-and-tourism-industry-874317476.html 
+
+
+## 6.) Appendix
+
+### Appendix Graphs (AG)
+
+##### AG-1
+```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+distance <- canadian_travel_survey$Distance
+hist(distance, xlab = "Distance (km)", ylab = "Frequency", main = "Distance of Trip")
+```
+##### AG-2
+```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+duration <- canadian_travel_survey$Duration
+hist(duration, xlab = "Duration (days)", ylab = "Frequency", main = "Duration of Trip")
+```
+##### AG-3
+```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+others <- canadian_travel_survey$Others
+hist(others, xlab = "# of Others Accompanying a Person", ylab = "Frequency", main = "Others on Trip")
+```
+##### AG-4
+```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+cost <- canadian_travel_survey$Cost
+hist(cost, xlab = "Cost (CAD)", ylab = "Frequency", main = "Cost of Trip")
+```
+##### AG-5
+```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_bar(aes(x = Q, y = ..prop.., group = 1, fill = Q), stat = "count") + ylim(0, 1) + ylab("Proportion") + xlab("Quarter of Year Traveled In") + ggtitle("Spread of Quarter Data") + theme(plot.title = element_text(hjust = 0.5))
+```
+##### AG-6
+```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_bar(aes(x = ProvO, y = ..prop.., group = 1), stat = "count") + ylim(0, 1) + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ylab("Proportion") + xlab("Providence of Origin") + ggtitle("Spread of Providence Data") + theme(plot.title = element_text(hjust = 0.5))
+```
+##### AG-7
+```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_bar(aes(x = Reason, y = ..prop.., group = 1), stat = "count") + ylim(0, 1) + ylab("Proportion") + xlab("Reason for Trip") + ggtitle("Spread of Reason Data") + theme(plot.title = element_text(hjust = 0.5))
+```
+##### AG-8
+```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_bar(aes(x = Age, y = ..prop.., group = 1), stat = "count") + ylim(0, 1) + ylab("Proportion") + xlab("Age Range") + ggtitle("Spread of Age Data") + theme(plot.title = element_text(hjust = 0.5))
+```
+##### AG-9
+```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_bar(aes(x = Gender, y = ..prop.., group = 1), stat = "count") + ylim(0, 1) + ylab("Proportion") + xlab("Gender") + ggtitle("Spread of Gender Data") + theme(plot.title = element_text(hjust = 0.5))
+```
+##### AG-10
+```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_bar(aes(x = HHI, y = ..prop.., group = 1), stat = "count") + ylim(0, 1) + ylab("Proportion") + xlab("Household Income") + ggtitle("Spread of Household Income Data") + theme(plot.title = element_text(hjust = 0.5))
+```
+##### AG-11
+```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_bar(aes(x = Mode, y = ..prop.., group = 1), stat = "count") + ylim(0, 1) + ylab("Proportion") + xlab("Mode of Travel") + ggtitle("Spread of Mode of Travel Data") + theme(plot.title = element_text(hjust = 0.5))
+```
+##### AG-12
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_boxplot(aes(x = ProvO, y = sqrt(Cost), fill = ProvO)) + ylab("Sqrt(Cost)") + xlab("Providence") + ggtitle("Sqrt(Cost) vs Providence of Origin") + theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+```
+##### AG-13
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_boxplot(aes(x = Reason, y = sqrt(Cost), fill = Reason)) + ylab("Sqrt(Cost)") + xlab("Reason for Trip") + ggtitle("Sqrt(Cost) vs Reason") + theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+
+```
+##### AG-14
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_boxplot(aes(x = Age, y = sqrt(Cost), fill = Age)) + ylab("Sqrt(Cost)") + xlab("Age") + ggtitle("Sqrt(Cost) vs Age") + theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+```
+##### AG-15
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_boxplot(aes(x = Gender, y = sqrt(Cost), fill = Gender)) + ylab("Sqrt(Cost)") + xlab("Gender ") + ggtitle("Sqrt(Cost) vs Gender") + theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+```
+##### AG-16
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_boxplot(aes(x = HHI, y = sqrt(Cost), fill = HHI))+ ylab("Sqrt(Cost)") + xlab("Household Income") + ggtitle("Sqrt(Cost) vs Household Income") + theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+```
+##### AG-17
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_boxplot(aes(x = Mode, y = sqrt(Cost), fill = Mode)) + ylab("Sqrt(Cost)") + xlab("Mode of Transportation") + ggtitle("Sqrt(Cost) vs Mode") + theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+```
+##### AG-18
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', out.width='70%'}
+ggplot(data = canadian_travel_survey) + geom_boxplot(aes(x = Mode, y = sqrt(Cost), fill = Q)) + ylab("Sqrt(Cost)") + xlab("Quarter of Year Traveled In") + ggtitle("Sqrt(Cost) vs Quarter") + theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+```
+##### AG-19
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+first_five <- canadian_travel_survey[,1:3]
+model.matrix(~0+., data = first_five) %>% 
+  cor(use="pairwise.complete.obs") %>% 
+  ggcorrplot(show.diag = F, type = "lower", lab = TRUE, lab_size = 2, title = "Correlation Plot I")
+```
+##### AG-20
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+second_five <- canadian_travel_survey[,4:10]
+model.matrix(~0+., data = second_five) %>% 
+  cor(use="pairwise.complete.obs") %>% 
+  ggcorrplot(show.diag = F, type = "lower", lab = TRUE, lab_size = 2, title = "Correlation Plot II")
+```
+##### AG-21
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+qplot(fitted(final_model), resid(final_model)) + geom_hline(yintercept = 0) + ggtitle("Residual Plot")
+```
+##### AG-22
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', out.width='70%'}
+qqnorm(rstudent(final_model))
+qqline(rstudent(final_model))
+```
+
+### Appendix Tables (AT)
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+tab_mode <- table(canadian_travel_survey$Mode)
+kable(prop.table(tab_mode), col.names = c("Mode", "Proportion"), caption = "AT-1 Mode of Transportation") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+tab_Q <- table(canadian_travel_survey$Q)
+kable(prop.table(tab_Q), col.names = c("Quarter", "Proportion"), caption = "AT-2 Calendar Quarter of Trip") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+tab_prov <- table(canadian_travel_survey$ProvO)
+kable(prop.table(tab_prov), col.names = c("Providence", "Proportion"), caption = "AT-3 Providence of Origin for Trip") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+tab_reason <- table(canadian_travel_survey$Reason)
+kable(prop.table(tab_reason), col.names = c("Reason", "Proportion"), caption = "AT-4 Reason for Trip") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+tab_age <- table(canadian_travel_survey$Age)
+kable(prop.table(tab_age), col.names = c("Age", "Proportion"), caption = "AT-5 Age") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+tab_gender <- table(canadian_travel_survey$Gender)
+kable(prop.table(tab_gender), col.names = c("Gender", "Proportion"), caption = "AT-6 Gender") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+tab_hhi <- table(canadian_travel_survey$HHI)
+kable(prop.table(tab_hhi), col.names = c("Household Income", "Proportion"), caption = "AT-7 Household Income (CAD)") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+model_one <- summary(lm(Cost~Q, data=canadian_travel_survey))
+model_two <- summary(lm(Cost~ProvO, data = canadian_travel_survey))
+model_three <- summary(lm(Cost~Distance, data = canadian_travel_survey))
+model_four <- summary(lm(Cost~Duration, data = canadian_travel_survey))
+model_five <- summary(lm(Cost~Reason, data = canadian_travel_survey))
+model_six <- summary(lm(Cost~Age, data = canadian_travel_survey))
+model_seven <- summary(lm(Cost~Gender, data = canadian_travel_survey))
+model_eight <- summary(lm(Cost~HHI, data = canadian_travel_survey))
+model_nine <- summary(lm(Cost~Others, data = canadian_travel_survey))
+model_ten <- summary(lm(Cost~Mode, data = canadian_travel_survey))
+kable(coef(model_one), col.names = c("Estimate", "Standard Error", "T Value", "P Value"), caption = "AT-8 Linear Model: Cost ~ Q") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+kable(coef(model_two), col.names = c("Estimate", "Standard Error", "T Value", "P Value"), caption = "AT-9 Linear Model: Cost ~ ProvO") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+kable(coef(model_three), col.names = c("Estimate", "Standard Error", "T Value", "P Value"), caption = "AT-10 Linear Model: Cost ~ Distance") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+kable(coef(model_four), col.names = c("Estimate", "Standard Error", "T Value", "P Value"), caption = "AT-11 Linear Model: Cost ~ Duration") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+kable(coef(model_five), col.names = c("Estimate", "Standard Error", "T Value", "P Value"), caption = "AT-12 Linear Model: Cost ~ Reason") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+kable(coef(model_six), col.names = c("Estimate", "Standard Error", "T Value", "P Value"), caption = "AT-13Linear Model: Cost ~ Age") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+kable(coef(model_seven), col.names = c("Estimate", "Standard Error", "T Value", "P Value"), caption = "AT-14 Linear Model: Cost ~ Gender") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+kable(coef(model_eight), col.names = c("Estimate", "Standard Error", "T Value", "P Value"), caption = "AT-15 Linear Model: Cost ~ HHI") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+kable(coef(model_nine), col.names = c("Estimate", "Standard Error", "T Value", "P Value"), caption = "AT-16 Linear Model: Cost ~ Others") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+
+kable(coef(model_ten), col.names = c("Estimate", "Standard Error", "T Value", "P Value"), caption = "AT-17 Linear Model: Cost ~ Mode") %>% kable_material(c("striped","hover")) %>% kable_styling(latex_options = 'hold_position')
+```
+
+
+
+
+
+
+

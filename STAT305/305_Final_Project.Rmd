@@ -1,0 +1,191 @@
+---
+title: "STAT 305 Final Graphs"
+author: "Nitya Shanker"
+date: "4/19/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(corrplot)
+library(ggplot2)
+library(reshape2)
+library(vtable)
+library(plyr)
+library(randomForest)
+library(ggcorrplot)
+
+```
+
+```{r}
+housing_prices<-read.csv('/Users/fatimabhutta/Documents/STAT 305 Final Project/housingpricedata.csv', header=TRUE)
+#housing_prices
+
+df <-housing_prices %>%
+  mutate(SalePrice =exp(SalePrice))
+
+```
+
+
+
+```{r}
+#Converting NA vals to 0
+housing_prices[is.na(housing_prices)] <- 0
+#housing_prices
+
+```
+
+## The following is a correlation matrix including every numeric value in the housing data set. 38 NUMERICAL VALS
+```{r}
+#colnames(housing_prices)
+
+numeric_set <-housing_prices %>% select(where(is.numeric))
+numeric_set
+
+#numerical_names <-names(numeric_set); numerical_names
+
+cors <-cor(numeric_set, use = "pairwise.complete.obs")
+cors <-round(cors, 2)
+
+corrplot1 <-ggcorrplot(cors, lab = TRUE,type= 'lower', hc.order = TRUE, lab_size = 2, tl.cex = 2)
+corrplot1
+
+```
+```{r}
+# Remove categorical values
+
+summary(numeric_set)
+sumtable(numeric_set)
+
+```
+
+
+
+## 43 CATEGORICAL VALS 
+Cleaning up Categorical Vairable data:
+```{r}
+
+housing_prices$Heating<- as.factor(housing_prices$Heating)
+housing_prices$CentralAir<- as.factor(housing_prices$CentralAir)
+housing_prices$SaleType<- as.factor(housing_prices$SaleType)
+housing_prices$SaleCondition<- as.factor(housing_prices$SaleCondition)
+housing_prices$MoSold<- as.factor(housing_prices$MoSold)
+housing_prices$Foundation<- as.factor(housing_prices$Foundation)
+housing_prices$MasVnrType<- as.factor(housing_prices$MasVnrType)
+housing_prices$Exterior2nd<- as.factor(housing_prices$Exterior2nd)
+housing_prices$Exterior1st<- as.factor(housing_prices$Exterior1st)
+housing_prices$RoofMatl<- as.factor(housing_prices$RoofMatl)
+housing_prices$RoofStyle<- as.factor(housing_prices$RoofStyle)
+housing_prices$HouseStyle<- as.factor(housing_prices$HouseStyle)
+housing_prices$BldgType<- as.factor(housing_prices$BldgType)
+housing_prices$Condition1<- as.factor(housing_prices$Condition1)
+housing_prices$Condition2<- as.factor(housing_prices$Condition2)
+housing_prices$Neighborhood<- as.factor(housing_prices$Neighborhood)
+housing_prices$LotConfig<- as.factor(housing_prices$LotConfig)
+housing_prices$LandContour<- as.factor(housing_prices$LandContour)
+housing_prices$Street<- as.factor(housing_prices$Street)
+housing_prices$MSZoning<- as.factor(housing_prices$MSZoning)
+housing_prices$MSSubClass<- as.factor(housing_prices$MSSubClass)
+#str(housing_prices)
+
+
+```
+
+#Random Forest Tree for categorical+nominal variables
+```{r}
+
+rf_tr <-sample(1:nrow(housing_prices), nrow(housing_prices))
+rf_test <-housing_prices[-rf_tr,]$SalePrice
+
+rf_1 <-randomForest(SalePrice~., data = housing_prices, subset = rf_tr, importance = TRUE,ntree = 1000)
+rf_1
+
+
+
+varImpPlot(rf_1, main = "Random Forest: Nominal & Categorical Variables")
+```
+
+As the correlation matrix also showed, variables related to a house size/quality are most important in determining the target SalePrice. The most important variable is GrLivArea, followed by OverallQual.
+
+The random forest shows that most of the categorical values in the dataset play no part in determining the target SalePrice. Neighborhood and MSSubClass seem to be the only variables that do. 
+
+#Exploring Neighborhood variable's relevancy to SalePrice
+
+
+```{r}
+
+
+options(scipen=10000)
+
+
+neighborhood_plot <-ggplot(housing_prices, aes(x = reorder(Neighborhood, SalePrice), y = SalePrice, color = Neighborhood)) + geom_boxplot() + theme(legend.position="none")+ coord_flip()
+neighborhood_plot
+
+
+```
+
+
+
+
+#Exploring MSSubClass variable's relevancy to SalePrice
+```{r}
+library(beanplot)
+library(mosaic)
+# MSSubClass seems to be a strong indicator of property size
+
+beanplot(SalePrice~MSSubClass,data=housing_prices,show.names =TRUE,col="bisque",method="jitter", xlab = "Type of House (MSSubClass)",
+ylab = "Sale Price (SalePrice")
+#In the beanplot the green lines show individual observations, while the purple area shows the distribution.
+
+favstats(SalePrice~MSSubClass,data=housing_prices)
+
+
+```
+
+
+```{r}
+Bsmt_SalesPrice<-housing_prices%>%
+  select(TotalBsmtSF,SalePrice,X1stFlrSF)
+ggplot(Bsmt_SalesPrice,aes(x=SalePrice/1000, y=TotalBsmtSF))+geom_point(aes(color=X1stFlrSF))
+```
+
+As the total basement square feet increases, the sale price increases. Homes with a small basement and a small first floor had a small sale price, whereas homes with medium size basement and a medium size first floor had a large sale price. This makes sense because bigger homes tend to be valued more than smaller homes. 
+
+
+```{r}
+ggplot(data=housing_prices, mapping = aes(x=GrLivArea, y=SalePrice/1000, color= OverallQual)) + geom_point()
+```
+
+Ground living area does have a positive relationship with sale price. The higher the ground living area, the higher the overall quality and it is more likely for the house to be a higher price.
+
+```{r}
+ggplot(data=housing_prices, mapping = aes(x=GarageCars, y=SalePrice/1000, color=GarageArea)) + geom_point()
+```
+
+As the number of cars gets higher so does the garage area. The higher the garage area and the more cars the higher the price of the house is. But this analysis does not take into account 4 cars where the prices are low. And there aren’t many houses with a 4 car garage.
+
+
+Creating a new variable: totalSF:
+
+```{r}
+
+total_sf_calc <- housing_prices%>%select(GrLivArea, TotalBsmtSF, SalePrice)
+#total_sf_calc
+
+
+total_sf_calc["totalSF"] <- total_sf_calc$GrLivArea + total_sf_calc$TotalBsmtSF
+total_sf_calc
+
+favstats(SalePrice ~totalSF, data=total_sf_calc)
+
+ggplot(data=total_sf_calc, mapping = aes(x=totalSF, y=SalePrice/1000)) + geom_point() + geom_smooth(method = "loess") 
+
+
+```
+
+```{r}
+ggplot(data=housing_prices, mapping = aes(x=GarageArea, y=SalePrice/1000, color=GarageCars)) + geom_point()
+
+```
+This graph shows that as price goes up so does the garage area and number of cars that can fit in the garage.

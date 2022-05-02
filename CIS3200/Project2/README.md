@@ -1,1 +1,1 @@
-
+I used Spark on Jupyter Notebook. Logically, the only thing I needed to change was the delimiter that split the words up. Instead of splitting each word up by a space, the range of the split was 5 words. First I removed the punctuation from the lines, then I zipped the lines and joined them, and finally mapped by using a function to count every 5 words. The map step of my code gives the correct output and count, but reducing seems to double the count and skip certain words in the first 3 rows. 

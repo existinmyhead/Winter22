@@ -1,3 +1,5 @@
+Course: Introduction to Data Science
+
 Course Description:
 
 Data science is a combination of knowledge about algorithmic abstractions and statistical de- cision making. The knowledge of Data science brings these ideas together in the contest of the domain from which the data originate. The domain might be anything from healthcare or business or social science to astronomy or zoology.
